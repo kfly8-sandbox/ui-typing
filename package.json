@@ -1,0 +1,19 @@
+{
+  "name": "ui-typing",
+  "version": "0.0.0",
+  "description": "Game-style typing dialogue UI with SolidJS",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "vite": "^6.0.0",
+    "vite-plugin-solid": "^2.11.0",
+    "typescript": "^5.7.0"
+  },
+  "dependencies": {
+    "solid-js": "^1.9.0"
+  }
+}
