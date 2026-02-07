@@ -17,26 +17,12 @@ function getAudioCtx(): AudioContext {
   return audioCtx;
 }
 
-// Map hiragana/katakana to their vowel row (a=0, i=1, u=2, e=3, o=4)
-// Returns -1 for non-kana (punctuation, kanji, etc.)
+// Map a character to its vowel (a=0, i=1, u=2, e=3, o=4)
+// Supports hiragana, katakana, and latin alphabet
+// Returns -1 for punctuation, whitespace, etc.
 function getVowelIndex(ch: string): number {
-  const code = ch.codePointAt(0)!;
-
-  // Hiragana: あ(0x3042) - ん(0x3093)
-  // Katakana: ア(0x30A2) - ン(0x30F3)
-  let offset = -1;
-  if (code >= 0x3042 && code <= 0x3093) {
-    offset = code - 0x3042;
-  } else if (code >= 0x30a2 && code <= 0x30f3) {
-    offset = code - 0x30a2;
-  }
-
-  if (offset < 0) return -1;
-
-  // Japanese kana are arranged: あいうえお かきくけこ ...
-  // Each row of 5 follows the a-i-u-e-o pattern (with some gaps)
-  // Simplified mapping using modular pattern on the kana table
-  const vowelMap: Record<string, number> = {
+  // --- Japanese kana ---
+  const kanaVowelMap: Record<string, number> = {
     "あ":0,"か":0,"さ":0,"た":0,"な":0,"は":0,"ま":0,"や":0,"ら":0,"わ":0,
     "が":0,"ざ":0,"だ":0,"ば":0,"ぱ":0,
     "い":1,"き":1,"し":1,"ち":1,"に":1,"ひ":1,"み":1,"り":1,
@@ -48,7 +34,6 @@ function getVowelIndex(ch: string): number {
     "お":4,"こ":4,"そ":4,"と":4,"の":4,"ほ":4,"も":4,"よ":4,"ろ":4,"を":4,
     "ご":4,"ぞ":4,"ど":4,"ぼ":4,"ぽ":4,
     "ん":2,
-    // Katakana
     "ア":0,"カ":0,"サ":0,"タ":0,"ナ":0,"ハ":0,"マ":0,"ヤ":0,"ラ":0,"ワ":0,
     "ガ":0,"ザ":0,"ダ":0,"バ":0,"パ":0,
     "イ":1,"キ":1,"シ":1,"チ":1,"ニ":1,"ヒ":1,"ミ":1,"リ":1,
@@ -61,7 +46,27 @@ function getVowelIndex(ch: string): number {
     "ゴ":4,"ゾ":4,"ド":4,"ボ":4,"ポ":4,
     "ン":2,
   };
-  return vowelMap[ch] ?? -1;
+  if (kanaVowelMap[ch] !== undefined) return kanaVowelMap[ch];
+
+  // --- Latin alphabet ---
+  // Map each letter to the vowel it most commonly represents or
+  // the vowel in its typical pronunciation context
+  const lower = ch.toLowerCase();
+  const latinVowelMap: Record<string, number> = {
+    // Direct vowels
+    "a": 0, "i": 1, "u": 2, "e": 3, "o": 4,
+    // Consonants mapped to the vowel they typically pair with
+    "b": 1, "c": 1, "d": 1,       // bee, cee, dee
+    "f": 3, "g": 1, "h": 0,       // ef, gee, aitch
+    "j": 0, "k": 0, "l": 3,       // jay, kay, el
+    "m": 3, "n": 3, "p": 1,       // em, en, pee
+    "q": 2, "r": 0, "s": 3,       // cue, ar, es
+    "t": 1, "v": 1, "w": 2,       // tee, vee, double-u
+    "x": 3, "y": 0, "z": 1,       // ex, way, zee
+  };
+  if (latinVowelMap[lower] !== undefined) return latinVowelMap[lower];
+
+  return -1;
 }
 
 // Frequency offsets per vowel, modelling natural Japanese formant tendencies
@@ -144,8 +149,11 @@ export function TypingDialogue(props: Props) {
     if ("。！？…\n".includes(ch)) return base * 8;
     // Clause-level punctuation: medium pause
     if ("、，〜ー".includes(ch)) return base * 4;
-    // Space / half-width punctuation
-    if (" 　!?,.".includes(ch)) return base * 3;
+    // Space / half-width punctuation: word boundary pause
+    if (" 　".includes(ch)) return base * 2;
+    if ("!?,.".includes(ch)) return base * 3;
+    // Latin characters: faster typing (lower info density per char)
+    if (/[a-zA-Z]/.test(ch)) return base * 0.4;
     return base;
   }
 
