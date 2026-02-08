@@ -157,14 +157,22 @@ export function TypingDialogue(props: Props) {
     return base;
   }
 
+  let timerId: number | undefined;
+
+  function clearTimer() {
+    if (timerId !== undefined) {
+      clearTimeout(timerId);
+      timerId = undefined;
+    }
+  }
+
   createEffect(() => {
     // Reset when text changes
     const textChars = [...props.text];
     setDisplayedCount(0);
     setIsComplete(false);
     initPitchContour(textChars.length);
-
-    let timerId: number | undefined;
+    clearTimer();
 
     function tick(index: number) {
       if (index >= textChars.length) {
@@ -180,16 +188,14 @@ export function TypingDialogue(props: Props) {
 
     timerId = window.setTimeout(() => tick(0), baseSpeed());
 
-    onCleanup(() => {
-      if (timerId !== undefined) clearTimeout(timerId);
-    });
+    onCleanup(clearTimer);
   });
 
   const handleClick = () => {
     if (isComplete()) {
       props.onNext?.();
     } else {
-      // Skip to end on click
+      clearTimer();
       setDisplayedCount(chars().length);
       setIsComplete(true);
       props.onComplete?.();
